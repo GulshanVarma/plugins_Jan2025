@@ -101,9 +101,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LoanConfigPlugin.cs" />
     <Compile Include="Plugin_Loans.cs" />
-    <Compile Include="prevalidationPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
