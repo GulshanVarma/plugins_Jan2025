@@ -101,6 +101,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionPlugin.cs" />
     <Compile Include="Plugin_Loans.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -108,6 +109,11 @@
     <None Include="App.config" />
     <None Include="dbg_key_plugin.snk" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="JS\action_ribbon.js" />
+    <Content Include="JS\empMgr_autofill.js" />
+    <Content Include="JS\gridLoading.js" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

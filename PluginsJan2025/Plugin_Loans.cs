@@ -6,6 +6,7 @@ namespace PluginsJan2025
 {
     public class plg_OnCreate_Loans_PreOps : IPlugin
     {
+        public Entity AccountDetails = null, userDetail = null, LoanConfigDetails = null;
         public void Execute(IServiceProvider serviceProvider)
         {
             ITracingService tracingService = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
@@ -24,6 +25,7 @@ namespace PluginsJan2025
 
                         Entity TargetEntity = context.InputParameters["Target"] as Entity;
 
+                        //LOGIC 1 -- autofill from config
                         // lookup is entity reference, not guid. Get Lookup details
                         Guid LoanTypeGuid = TargetEntity.GetAttributeValue<EntityReference>("gv_loantype").Id;
                         Entity LoanTypeEntity = service.Retrieve("gv_bank_loan_config", LoanTypeGuid, new ColumnSet("gv_bank_loan_configid", "gv_interestrate", "gv_loantenure"));
@@ -37,7 +39,28 @@ namespace PluginsJan2025
                         if (TargetEntity.Contains("gv_interest"))
                             TargetEntity["gv_interest"] = LoanTypeEntity.GetAttributeValue<decimal>("gv_interestrate");
                         TargetEntity.Attributes.Add("gv_interest", LoanTypeEntity.GetAttributeValue<decimal>("gv_interestrate"));
-                        tracingService.Trace("plg_OnCreate_Loans_PreOps -> Autofilled the records");
+                        tracingService.Trace("plg_OnCreate_Loans_PreOps -> Autofilled the records - Logic 1 success");
+
+                        // LOGIC 2 -- check loan limit
+
+                        // load pan details 
+                        AccountDetails = service.Retrieve("gv_bank_account", TargetEntity.GetAttributeValue<EntityReference>("gv_pan").Id,
+                            new ColumnSet("gv_accountnumber", "gv_accountholder"));
+
+                        // load user details - userScore
+                        userDetail = service.Retrieve("gv_bank_user", AccountDetails.GetAttributeValue<EntityReference>("gv_accountholder").Id,
+                            new ColumnSet("gv_userscore", "gv_userfullname"));
+
+                        // get LoanConfig data - required score
+                        LoanConfigDetails = service.Retrieve("gv_bank_loan_config", TargetEntity.GetAttributeValue<EntityReference>("gv_loantype").Id,
+                            new ColumnSet("gv_minimumscore"));
+
+                        if (LoanConfigDetails.GetAttributeValue<Int32>("gv_minimumscore") > userDetail.GetAttributeValue<Int32>("gv_userscore"))
+                        {
+                            tracingService.Trace($"plg_OnCreate_Loans_PreOps -> User {userDetail.GetAttributeValue<string>("gv_userfullname")} -> score {userDetail.GetAttributeValue<Int32>("gv_userscore")} is lower than the required limit - {LoanConfigDetails.GetAttributeValue<Int32>("gv_minimumscore")}");
+                            throw new InvalidPluginExecutionException("user score is lower than the required limit - " + LoanConfigDetails.GetAttributeValue<Int32>("gv_minimumscore"));
+                        }
+                        tracingService.Trace($"plg_OnCreate_Loans_PreOps -> Update. Logic 2 Success. User {userDetail.GetAttributeValue<string>("gv_userfullname")} -> score {userDetail.GetAttributeValue<Int32>("gv_userscore")} is greater than the required limit - {LoanConfigDetails.GetAttributeValue<Int32>("gv_minimumscore")}");
                     }
                     else
                     {
@@ -45,6 +68,7 @@ namespace PluginsJan2025
                     }
                 }
             }
+            catch (InvalidPluginExecutionException) { throw; }
             catch (Exception ex)
             {
                 tracingService.Trace($"plg_OnCreate_Loans_PreOps -> Exception Caught - {ex.Message}, trace -- {ex.StackTrace}");
@@ -54,6 +78,7 @@ namespace PluginsJan2025
 
     public class plg_OnUpdate_Loans_PostOps : IPlugin
     {
+        public Entity Loandetails = null, AccountDetails = null, userDetail = null, LoanConfigDetails = null;
         public void Execute(IServiceProvider serviceProvider)
         {
             ITracingService tracingService = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
@@ -66,12 +91,11 @@ namespace PluginsJan2025
                     IOrganizationServiceFactory orgFactory = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
                     IOrganizationService service = orgFactory.CreateOrganizationService(context.UserId);
 
-                    Entity Loandetails = null,AccountDetails = null,userDetail = null,LoanConfigDetails = null;
-                    Entity TargetEntity = context.InputParameters["Target"] as Entity;
-                    
                     // we get only ID and updated field
                     if (context.MessageName.ToLower() == "update" && context.Stage == 40)
                     {
+                        Entity TargetEntity = context.InputParameters["Target"] as Entity;
+
                         // load additional fields of Target Entity
                         ColumnSet getDataForLoan = new ColumnSet("gv_loantype", "gv_pan");
                         Loandetails = service.Retrieve("gv_bank_loan", TargetEntity.Id, getDataForLoan);
