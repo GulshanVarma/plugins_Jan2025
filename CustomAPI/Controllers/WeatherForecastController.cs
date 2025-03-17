@@ -14,7 +14,7 @@ public class DynamicsController : ControllerBase
     private const string ApiUrl = "/api/data/v9.2/gv_bank_loans(137d1884-47d7-ef11-8eea-7c1e523d27d3)";
     private const string ActionApiUrl = "/api/data/v9.2/gv_bank_accounts(280af31b-b394-49b8-befe-28bf84ca5a8a)/Microsoft.Dynamics.CRM.gv_action_calculateTotalLoanAmt"; // action
     private const string ClientId = "f63fd72e-6ff0-4721-b32d-eed68731e232";
-    private const string ClientSCValue = "kBR8Q~CHTbpM_F.ozS6vfZnmyPrM_r~Lcti5Acax";
+    private const string ClientSecret = "";
     private const string TenantId = "f976b35f-fc26-4ef7-a853-ef1ab274a897";
 
     [HttpGet("TestAPI")]
@@ -65,7 +65,7 @@ public class DynamicsController : ControllerBase
     {
         var app = ConfidentialClientApplicationBuilder
             .Create(ClientId)
-            .WithClientSecret(ClientSCValue)
+            .WithClientSecret(ClientSecret)
             .WithAuthority($"https://login.microsoftonline.com/{TenantId}")
             .Build();
 
